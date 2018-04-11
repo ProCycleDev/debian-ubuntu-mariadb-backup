@@ -3,10 +3,10 @@
 export LC_ALL=C
 
 days_of_backups=3  # Must be less than 7
-backup_owner="backup"
-parent_dir="/backups/mysql"
-defaults_file="/etc/mysql/backup.cnf"
-todays_dir="${parent_dir}/$(date +%a)"
+backup_owner="<backup_user>"
+parent_dir="/data/backups/mariadb"
+defaults_file="/etc/mysql/<database_name>-backup.cnf"
+todays_dir="${parent_dir}/$(date +%F)"
 log_file="${todays_dir}/backup-progress.log"
 #encryption_key_file="${parent_dir}/encryption_key"
 now="$(date +%m-%d-%Y_%H-%M-%S)"
