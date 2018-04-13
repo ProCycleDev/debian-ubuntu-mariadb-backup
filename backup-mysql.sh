@@ -4,7 +4,7 @@ export LC_ALL=C
 
 days_of_backups=3  # Must be less than 7
 backup_owner="backup"
-parent_dir="/data/backups/mariadb"
+parent_dir="/backups/mariadb"
 defaults_file="/etc/mysql/<database_name>-backup.cnf"
 todays_dir="${parent_dir}/$(date +%F)"
 log_file="${todays_dir}/backup-progress.log"
