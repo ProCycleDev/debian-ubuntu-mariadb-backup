@@ -62,15 +62,6 @@ set_options () {
     fi
 }
 
-rotate_old () {
-    # Remove the oldest backup in rotation
-    day_dir_to_remove="${parent_dir}/$(date --date="${days_of_backups} days ago" +%a)"
-
-    if [ -d "${day_dir_to_remove}" ]; then
-        rm -rf "${day_dir_to_remove}"
-    fi
-}
-
 take_backup () {
     # Make sure today's backup directory is available and take the actual backup
     mkdir -p "${todays_dir}"
@@ -81,7 +72,7 @@ take_backup () {
     mv "${todays_dir}/${backup_type}-${now}.xbstream.incomplete" "${todays_dir}/${backup_type}-${now}.xbstream"
 }
 
-sanity_check && set_options && rotate_old && take_backup
+sanity_check && set_options && take_backup
 
 # Check success and print message
 if tail -1 "${log_file}" | grep -q "completed OK"; then
