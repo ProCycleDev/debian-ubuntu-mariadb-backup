@@ -2,10 +2,11 @@
 
 export LC_ALL=C
 
-days_of_backups=3  # Must be less than 7
+database_name="$1"
+s3_space_name="$2"
 backup_owner="backup"
 parent_dir="/backups/mariadb"
-defaults_file="/etc/mysql/$1-backup.cnf"
+defaults_file="/etc/mysql/${database_name}-backup.cnf"
 todays_dir="${parent_dir}/$(date +%F)"
 log_file="${todays_dir}/backup-progress.log"
 #encryption_key_file="${parent_dir}/encryption_key"
@@ -71,8 +72,12 @@ take_backup () {
     
     mv "${todays_dir}/${backup_type}-${now}.xbstream.incomplete" "${todays_dir}/${backup_type}-${now}.xbstream"
 }
+upload_backup () {
+    # Upload the backup file to an S3 compatible provider using s3cmd
+    s3cmd -c "/etc/mysql/${s3_space_name}.s3cfg" -e put "${todays_dir}/${backup_type}-${now}.xbstream" "s3://${s3_space_name}/$HOSTNAME/${database_name}/"
+}
 
-sanity_check && set_options && take_backup
+sanity_check && set_options && take_backup && upload_backup
 
 # Check success and print message
 if tail -1 "${log_file}" | grep -q "completed OK"; then
