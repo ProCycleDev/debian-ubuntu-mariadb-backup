@@ -58,9 +58,25 @@ take_backup () {
     
     mv "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream.incomplete" "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream"
 }
+
 upload_backup () {
     # Upload the backup file to an S3 compatible provider using s3cmd
-    s3cmd -c "/etc/mysql/${s3_space_name}.s3cfg" -e put "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream" "s3://${s3_space_name}/$HOSTNAME/${database_name}/${todays_dir}/"
+	if [ -e "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream" ]
+	then
+		if [ -s "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream" ]
+		then
+			if [ -r "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream" ]
+			then
+				s3cmd -c "/etc/mysql/${s3_space_name}.s3cfg" -e put "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream" "s3://${s3_space_name}/$HOSTNAME/${database_name}/${todays_dir}/"
+			else
+				echo "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream is not readable"
+			fi
+		else
+			echo "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream is zero in size"
+		fi
+	else
+		echo "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream does not exist"
+	fi
 }
 
 sanity_check && set_options && take_backup && upload_backup
