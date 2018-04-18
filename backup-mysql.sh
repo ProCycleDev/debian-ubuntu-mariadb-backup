@@ -4,7 +4,7 @@ export LC_ALL=C
 
 database_name="$1"
 s3_space_name="$2"
-backup_owner="backup"
+backup_owner="$3"
 parent_dir="/backups/mariadb"
 defaults_file="/etc/mysql/${database_name}-backup.cnf"
 todays_dir="$(date +%F)"
