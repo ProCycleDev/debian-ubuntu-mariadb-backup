@@ -9,7 +9,7 @@ parent_dir="/backups/mariadb"
 defaults_file="/etc/mysql/${database_name}-backup.cnf"
 todays_dir="$(date +%F)"
 log_file="${parent_dir}/${todays_dir}/backup-progress.log"
-now="$(date +%F_%H-%M-%S)"
+now="$(date +%FT%H%MZ)"
 processors="$(nproc --all)"
 
 # Use this to echo to standard error
