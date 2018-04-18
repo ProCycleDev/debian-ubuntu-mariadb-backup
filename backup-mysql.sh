@@ -7,9 +7,8 @@ s3_space_name="$2"
 backup_owner="backup"
 parent_dir="/backups/mariadb"
 defaults_file="/etc/mysql/${database_name}-backup.cnf"
-todays_dir="${parent_dir}/$(date +%F)"
-log_file="${todays_dir}/backup-progress.log"
-#encryption_key_file="${parent_dir}/encryption_key"
+todays_dir="$(date +%F)"
+log_file="${parent_dir}/${todays_dir}/backup-progress.log"
 now="$(date +%m-%d-%Y_%H-%M-%S)"
 processors="$(nproc --all)"
 
@@ -26,55 +25,42 @@ sanity_check () {
     if [ "$USER" != "$backup_owner" ]; then
         error "Script can only be run as the \"$backup_owner\" user"
     fi
-    
-    # Check whether the encryption key file is available
-    #if [ ! -r "${encryption_key_file}" ]; then
-    #    error "Cannot read encryption key at ${encryption_key_file}"
-    #fi
 }
 
 set_options () {
     # List the innobackupex arguments
-    #declare -ga innobackupex_args=(
-        #"--encrypt=AES256"
-        #"--encrypt-key-file=${encryption_key_file}"
-        #"--encrypt-threads=${processors}"
-        #"--slave-info"
-        #"--incremental"
-        
     innobackupex_args=(
         "--defaults-file=${defaults_file}"
-        "--extra-lsndir=${todays_dir}"
+        "--extra-lsndir=${parent_dir}/${todays_dir}"
         "--backup"
         "--compress"
         "--stream=xbstream"
         "--parallel=${processors}"
         "--compress-threads=${processors}"
     )
-    
+
     backup_type="full"
 
     # Add option to read LSN (log sequence number) if a full backup has been
     # taken today.
-    if grep -q -s "to_lsn" "${todays_dir}/xtrabackup_checkpoints"; then
+    if grep -q -s "to_lsn" "${parent_dir}/${todays_dir}/xtrabackup_checkpoints"; then
         backup_type="incremental"
-        lsn=$(awk '/to_lsn/ {print $3;}' "${todays_dir}/xtrabackup_checkpoints")
+        lsn=$(awk '/to_lsn/ {print $3;}' "${parent_dir}/${todays_dir}/xtrabackup_checkpoints")
         innobackupex_args+=( "--incremental-lsn=${lsn}" )
     fi
 }
 
 take_backup () {
     # Make sure today's backup directory is available and take the actual backup
-    mkdir -p "${todays_dir}"
-    find "${todays_dir}" -type f -name "*.incomplete" -delete
-    #innobackupex "${innobackupex_args[@]}" "${todays_dir}" > "${todays_dir}/${backup_type}-${now}.xbstream.incomplete" 2> "${log_file}"
-    mariabackup "${innobackupex_args[@]}" "--target-dir=${todays_dir}" > "${todays_dir}/${backup_type}-${now}.xbstream.incomplete" 2> "${log_file}"
+    mkdir -p "${parent_dir}/${todays_dir}"
+    find "${parent_dir}/${todays_dir}" -type f -name "*.incomplete" -delete
+    mariabackup "${innobackupex_args[@]}" "--target-dir=${parent_dir}/${todays_dir}" > "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream.incomplete" 2> "${log_file}"
     
-    mv "${todays_dir}/${backup_type}-${now}.xbstream.incomplete" "${todays_dir}/${backup_type}-${now}.xbstream"
+    mv "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream.incomplete" "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream"
 }
 upload_backup () {
     # Upload the backup file to an S3 compatible provider using s3cmd
-    s3cmd -c "/etc/mysql/${s3_space_name}.s3cfg" -e put "${todays_dir}/${backup_type}-${now}.xbstream" "s3://${s3_space_name}/$HOSTNAME/${database_name}/"
+    s3cmd -c "/etc/mysql/${s3_space_name}.s3cfg" -e put "${parent_dir}/${todays_dir}/${backup_type}-${now}.xbstream" "s3://${s3_space_name}/$HOSTNAME/${database_name}/${todays_dir}/"
 }
 
 sanity_check && set_options && take_backup && upload_backup
@@ -82,7 +68,7 @@ sanity_check && set_options && take_backup && upload_backup
 # Check success and print message
 if tail -1 "${log_file}" | grep -q "completed OK"; then
     printf "Backup successful!\n"
-    printf "Backup created at %s/%s-%s.xbstream\n" "${todays_dir}" "${backup_type}" "${now}"
+    printf "Backup created at %s/%s-%s.xbstream\n" "${parent_dir}/${todays_dir}" "${backup_type}" "${now}"
 else
     error "Backup failure! Check ${log_file} for more information"
 fi
